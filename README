@@ -1,6 +1,8 @@
 1. Download from GIT
 Install git:
+```
 (Debian / Ubuntu) sudo apt install git
+```
 
 Clone repository
 Without a public SSH key (easy, recommended):
