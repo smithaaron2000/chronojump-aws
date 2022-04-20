@@ -1,0 +1,210 @@
+----
+Check that on windows we can compile (for the length of the compile order on cygwin, see: how_to_compile.txt)
+----
+
+1) copy manual PDFs from chronojump-docs repository, because in chronojump repository PDFs are not updated
+check is "updated to last version"
+cp ../chronojump-docs/chronojump_manual_e*.pdf manual/
+git commit manual/chronojump_manual_e*.pdf -m "Copied updated manuals from docs repo)"
+git push
+
+2) git tag (Chronojump's version depends on the tag):
+VERSION=1.6.2
+git commit -a -m "Bump version $VERSION"
+
+git tag -a "$VERSION"
+(added links to changes here, maybe better on the previous git commit)
+git push
+git push origin --tags
+
+# If some day we decide to do branching instead of tags:
+#with branching:
+#git checkout -b "tags/$VERSION" # creates a new branch
+# keep doing commits:
+# git commit -a
+# git commit -a
+# git cherry-pick -x "commit-from-master-or-some-branch-that-we-want-here"
+# And see other comments of the document
+
+Linux stuff
+------------
+sh autogen.sh
+make dist
+
+scp "chronojump-$VERSION.tar.gz" xaviblas@master.gnome.org:.
+ssh xaviblas@master.gnome.org
+ftpadmin install (filename)
+
+#with branching:
+#Go back to master:
+#git checkout master
+
+#fixing previous release
+#git note:
+#If we want to release 0.9.4 based on an bug fix from 0.9.3:
+#
+#git checkout tags/0.9.3
+#git checkout -b tags/0.9.4 # creates a new branch based on 0.9.3
+#git cherry-pick -x "commit-from-master-or-some-branch-that-we-want-here"
+#vim "fix something"
+#git commit -a -m "Important fix"
+#VERSION=0.9.4
+#Then go to [1]
+
+
+DEB) create deb package
+
+DEB.A) 1st time
+sudo apt-get install devscripts dput debhelper cdbs mono-devel cli-common-dev libdistro-info-perl
+
+GPG key (add random)
+apt-get install rng-tools
+rngd -r /dev/urandom
+GPG generate key:
+gpg --gen-key
+(use the values on DEBFULLNAME and DEBEMAIL, see below)
+
+DEB.B) every time
+
+on Debian Jessie need to disable GNOME-Keyring http://wiki.gnupg.org/GnomeKeyring
+
+sudo dpkg-divert --local --rename --divert /etc/xdg/autostart/gnome-keyring-gpg.desktop-disable --add /etc/xdg/autostart/gnome-keyring-gpg.desktop
+(need to restart)
+
+If you later decide to reenable it, then you can use:
+sudo dpkg-divert --rename --remove /etc/xdg/autostart/gnome-keyring-gpg.desktop
+(maybe need to restart)
+
+export DEBFULLNAME="Xavier de Blas"
+export DEBEMAIL="info@chronojump.org"
+./deb-pkg.sh 1 (broken, needs: libmono-sqlite2.0-cil libmono-winforms2.0-cil python-wxgtk2.8)
+
+read carefully screen messages. Once says: successfully uploaded, need to wait 1h 30' aprox, then an email will be sent from launchpad telling if ok or not.
+
+if there are problems, remove build-deb and repeat process
+
+DEB.C..a) On Debian Jessie:
+needs this ~/.dput.cf
+
+[chronojump-ppa]
+fqdn = ppa.launchpad.net
+method = ftp
+incoming = ~u-info-x/ubuntu/chronojump-ppa/
+login = anonymous
+allow_unsigned_uploads = 0
+
+debian/control needs to change: python-wxgtk2.8 to python-wxgtk3.0
+BUT this does not work for Ubuntu Launchpad, so continue with python-wxgtk-2.8
+
+And upload like this:
+dput chronojump-ppa build-deb/chronojump_..._source.changes
+
+
+DEB.C.b ) On raspbian
+needs this ~/.dput.cf
+
+[chronojump-ppa]
+fqdn = ppa.launchpad.net
+method = ftp
+incoming = ~u-info-x/chronojump-ppa/ubuntu/
+login = anonymous
+allow_unsigned_uploads = 0
+
+and upload like this:
+dput chronojump-ppa build-deb/chronojump..._source.changes
+
+
+
+macosx stuff
+------------
+
+Check if there are new static ffmpeg binaries on:
+https://ffmpeg.zeranoe.com/builds/
+download zip and put ffmpeg and ffplay on ffmpegBinariesMac dir
+
+If is for internal use, mv into: /Users/chronojump/BinarisMac/
+to be automatically available on owncloud
+
+download (with filezilla is very fast), using owncloud is nice also
+/Users/chronojump/chronojump/Chronojump-1.4.2-x86_64.dmg
+scp -l 8192 Chronojump...dmg xaviblas@master.gnome.org:.
+ssh xaviblas@master.gnome.org
+mv Chrono...dmg /ftp/pub/gnome/binaries/mac/chronojump
+cd /ftp/pub/gnome/binaries/mac/chronojump
+chmod 644 ...dmg
+signal-ftp-sync
+wait 5'
+
+windows stuff
+------------
+
+1) if chronojump_importer.py has changed, need to manually create the importer for python3
+It changed on: 27 Apr 2021!!
+because windows compile machine has cerbero with python2 and we do not want to break stuff installing python3
+
+on my local laptop:
+
+cp src/chronojump-importer/py2exec_chronojump_importer.py ~/informatica/virtualbox_windows_shared/
+cp src/chronojump-importer/chronojump_importer.py ~/informatica/virtualbox_windows_shared/
+there move them to python34 folder
+open python34 comandline, and there:
+python py2exec_chronojump_importer.py py2exe -d chronojump-importer-pyhon3
+copy chronojump-importer-python3 dir to  ~/informatica/virtualbox_windows_shared/
+and there move to win32/deps/bin
+git commit / push
+--
+
+2) See: howto_compile.txt
+
+3) Upload
+If is for internal use, copy int: c:/Usuarios/chronojump/BinarisWin/
+to be automatically available on owncloud
+
+scp -l 8192 Chronojump...exe xaviblas@master.gnome.org:.
+ssh xaviblas@master.gnome.org
+mv Chrono...exe /ftp/pub/gnome/binaries/win32/chronojump
+cd /ftp/pub/gnome/binaries/win32/chronojump
+chmod 755 Chrono...exe
+signal-ftp-sync
+wait 5'
+
+Wordpress
+---------
+Update shortcode variables on wordpress
+
+API (GetLastVersion)
+--------------------
+ssh to chronojump server
+su
+vi /etc/chronojump.conf
+
+Change: chronojump_stable_version
+
+example for major version:
+chronojump_stable_version=1.8.1
+
+example for minor version:
+chronojump_stable_version=1.8.1-37-g2e4a586
+
+systemctl restart gunicorn
+verify:
+curl http://api.chronojump.org:8080/version
+
+tell people stuff
+-------------
+twitters
+publish on website en/es (change shortcode variables)
+Tell people to update wikipedia page
+twitters again with photos, changes, ...
+
+other stuff
+-----------
+Update manual/s to chronojump site if changed
+
+_____________ OLD _____________
+
+server stuff
+------------
+ssh to chronojump server, sqlite-3 chronojump_server.db
+update preferences set value="0.9.3.0" where name="versionAvailable";
+
